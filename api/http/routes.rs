@@ -1,10 +1,13 @@
 use crate::api::contracts::{
     ApiErrorCode, ApiErrorResponse, ApiEstateScenarioInput, ApiHealthResponse, ApiJurisdiction,
-    ApiJurisdictionTaxRuleRegistryResponse, ApiOptimizedScenario, ApiScenarioResult,
+    ApiJurisdictionTaxRuleRegistryResponse, ApiOptimizedScenario,
+    ApiScenarioDocumentCalculateResponse, ApiScenarioDocumentFormat,
+    ApiScenarioDocumentIngestRequest, ApiScenarioDocumentIngestResponse, ApiScenarioResult,
     ApiTaxRuleRegistryEntry, ApiValidationIssue, ApiVersionedJurisdictionTaxRuleSet,
 };
 use crate::api::handler::{
-    calculate_single_scenario_contract, get_jurisdiction_tax_rule_registry_contract,
+    calculate_scenario_document_contract, calculate_single_scenario_contract,
+    get_jurisdiction_tax_rule_registry_contract, ingest_scenario_document_contract,
     list_supported_jurisdictions_contract, list_tax_rule_registry_entries_contract,
     optimize_candidate_scenarios_contract, resolve_latest_tax_rules_contract,
     resolve_tax_rules_for_year_contract,
@@ -31,7 +34,9 @@ type HttpResult<T> = Result<Json<T>, HttpError>;
         resolve_latest_rules,
         resolve_rules_for_year,
         calculate_scenario,
-        optimize_scenarios
+        optimize_scenarios,
+        ingest_scenario_document,
+        calculate_scenario_document
     ),
     components(
         schemas(
@@ -45,7 +50,11 @@ type HttpResult<T> = Result<Json<T>, HttpError>;
             ApiVersionedJurisdictionTaxRuleSet,
             ApiEstateScenarioInput,
             ApiScenarioResult,
-            ApiOptimizedScenario
+            ApiOptimizedScenario,
+            ApiScenarioDocumentFormat,
+            ApiScenarioDocumentIngestRequest,
+            ApiScenarioDocumentIngestResponse,
+            ApiScenarioDocumentCalculateResponse
         )
     ),
     tags(
@@ -58,6 +67,7 @@ struct ApiDoc;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .merge(crate::web::router())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(health))
         .route("/health/db", get(health_db))
@@ -74,6 +84,11 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/v1/scenario/calculate", post(calculate_scenario))
         .route("/v1/scenario/optimize", post(optimize_scenarios))
+        .route("/v1/scenario/ingest", post(ingest_scenario_document))
+        .route(
+            "/v1/scenario/document/calculate",
+            post(calculate_scenario_document),
+        )
         .with_state(state)
 }
 
@@ -259,6 +274,44 @@ async fn optimize_scenarios(
     Json(candidates): Json<Vec<ApiEstateScenarioInput>>,
 ) -> HttpResult<Option<ApiOptimizedScenario>> {
     optimize_candidate_scenarios_contract(candidates)
+        .map(Json)
+        .map_err(api_error_to_http)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/scenario/ingest",
+    tag = "scenario",
+    request_body = ApiScenarioDocumentIngestRequest,
+    responses(
+        (status = 200, description = "Parsed and validated scenarios from document", body = ApiScenarioDocumentIngestResponse),
+        (status = 400, description = "Document format or validation failure", body = ApiErrorResponse)
+    )
+)]
+async fn ingest_scenario_document(
+    Json(request): Json<ApiScenarioDocumentIngestRequest>,
+) -> HttpResult<ApiScenarioDocumentIngestResponse> {
+    ingest_scenario_document_contract(request)
+        .map(Json)
+        .map_err(api_error_to_http)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/scenario/document/calculate",
+    tag = "scenario",
+    request_body = ApiScenarioDocumentIngestRequest,
+    responses(
+        (status = 200, description = "Parsed, validated, and calculated scenarios from document", body = ApiScenarioDocumentCalculateResponse),
+        (status = 400, description = "Document format or validation failure", body = ApiErrorResponse),
+        (status = 422, description = "Rules could not be selected", body = ApiErrorResponse),
+        (status = 500, description = "Computation failure", body = ApiErrorResponse)
+    )
+)]
+async fn calculate_scenario_document(
+    Json(request): Json<ApiScenarioDocumentIngestRequest>,
+) -> HttpResult<ApiScenarioDocumentCalculateResponse> {
+    calculate_scenario_document_contract(request)
         .map(Json)
         .map_err(api_error_to_http)
 }

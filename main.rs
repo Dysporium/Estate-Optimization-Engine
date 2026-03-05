@@ -10,6 +10,9 @@ pub mod api;
 #[path = "simulation/mod.rs"]
 pub mod simulation;
 
+#[path = "web_backend/mod.rs"]
+pub mod web;
+
 #[cfg(test)]
 #[path = "tests/mod.rs"]
 mod tests;

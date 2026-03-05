@@ -5,6 +5,7 @@ Jurisdiction-aware estate-planning engine with:
 - Liquidity Gap output
 - Tax-rule version registry
 - HTTP API (Cargo + Axum)
+- Web upload interface for scenario documents
 
 Current jurisdiction baselines:
 - South Africa
@@ -29,11 +30,37 @@ Custom bind address:
 ENGINE_BIND=0.0.0.0:8080 cargo run
 ```
 
+Open web interface:
+- `http://127.0.0.1:8080/web`
+
+Frontend (React + TypeScript in `web/`):
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Build frontend for Rust-served `/web`:
+```bash
+cd web
+npm run build
+```
+
 Compile checks:
 ```bash
 cargo check
 cargo check --all-targets
 ```
+
+## Scenario Document Processing
+Document endpoints:
+- `POST /v1/scenario/ingest` to parse and validate document content.
+- `POST /v1/scenario/document/calculate` to parse, validate, and calculate.
+
+Supported JSON shapes:
+- single scenario object
+- array of scenario objects
+- object with `scenarios` array
 
 ## Verification
 Tax baselines are maintained in:

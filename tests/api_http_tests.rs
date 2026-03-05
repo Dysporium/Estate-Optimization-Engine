@@ -152,3 +152,23 @@ async fn openapi_endpoint_returns_spec() {
     assert!(parsed.get("openapi").is_some());
     assert!(parsed.get("paths").is_some());
 }
+
+#[tokio::test]
+async fn web_interface_page_is_available() {
+    let response = app()
+        .oneshot(
+            Request::builder()
+                .uri("/web")
+                .body(Body::empty())
+                .expect("Failed to build request"),
+        )
+        .await
+        .expect("Route call failed");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("Failed to read body");
+    let html = String::from_utf8(body.to_vec()).expect("Response body was not valid UTF-8");
+    assert!(html.contains("Estate Optimization Engine"));
+}

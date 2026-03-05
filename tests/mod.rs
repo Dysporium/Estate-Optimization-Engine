@@ -1,4 +1,5 @@
 mod api_contract_dto_tests;
+mod api_document_ingest_tests;
 mod api_error_contract_tests;
 mod api_http_tests;
 mod api_registry_tests;
