@@ -1,16 +1,19 @@
 use crate::api::contracts::{
-    ApiErrorCode, ApiErrorResponse, ApiEstateScenarioInput, ApiHealthResponse, ApiJurisdiction,
+    ApiErrorCode, ApiErrorResponse, ApiEstateDocumentAnalysisRequest,
+    ApiEstateDocumentAnalysisResponse, ApiEstateDocumentChecklistItem, ApiEstateDocumentDetection,
+    ApiEstateDocumentInput, ApiEstateDocumentRequirementStatus, ApiEstateDocumentType,
+    ApiEstateScenarioInput, ApiHealthResponse, ApiJurisdiction,
     ApiJurisdictionTaxRuleRegistryResponse, ApiOptimizedScenario,
     ApiScenarioDocumentCalculateResponse, ApiScenarioDocumentFormat,
     ApiScenarioDocumentIngestRequest, ApiScenarioDocumentIngestResponse, ApiScenarioResult,
     ApiTaxRuleRegistryEntry, ApiValidationIssue, ApiVersionedJurisdictionTaxRuleSet,
 };
 use crate::api::handler::{
-    calculate_scenario_document_contract, calculate_single_scenario_contract,
-    get_jurisdiction_tax_rule_registry_contract, ingest_scenario_document_contract,
-    list_supported_jurisdictions_contract, list_tax_rule_registry_entries_contract,
-    optimize_candidate_scenarios_contract, resolve_latest_tax_rules_contract,
-    resolve_tax_rules_for_year_contract,
+    analyze_estate_documents_contract, calculate_scenario_document_contract,
+    calculate_single_scenario_contract, get_jurisdiction_tax_rule_registry_contract,
+    ingest_scenario_document_contract, list_supported_jurisdictions_contract,
+    list_tax_rule_registry_entries_contract, optimize_candidate_scenarios_contract,
+    resolve_latest_tax_rules_contract, resolve_tax_rules_for_year_contract,
 };
 use crate::api::http::state::AppState;
 use axum::extract::{Path, State};
@@ -36,7 +39,8 @@ type HttpResult<T> = Result<Json<T>, HttpError>;
         calculate_scenario,
         optimize_scenarios,
         ingest_scenario_document,
-        calculate_scenario_document
+        calculate_scenario_document,
+        analyze_estate_documents
     ),
     components(
         schemas(
@@ -54,13 +58,21 @@ type HttpResult<T> = Result<Json<T>, HttpError>;
             ApiScenarioDocumentFormat,
             ApiScenarioDocumentIngestRequest,
             ApiScenarioDocumentIngestResponse,
-            ApiScenarioDocumentCalculateResponse
+            ApiScenarioDocumentCalculateResponse,
+            ApiEstateDocumentType,
+            ApiEstateDocumentRequirementStatus,
+            ApiEstateDocumentInput,
+            ApiEstateDocumentAnalysisRequest,
+            ApiEstateDocumentDetection,
+            ApiEstateDocumentChecklistItem,
+            ApiEstateDocumentAnalysisResponse
         )
     ),
     tags(
         (name = "health", description = "Health and readiness endpoints"),
         (name = "rules", description = "Tax-rule discovery and selection endpoints"),
-        (name = "scenario", description = "Scenario calculation and optimization endpoints")
+        (name = "scenario", description = "Scenario calculation and optimization endpoints"),
+        (name = "estate-documents", description = "Estate legal/tax document intake and checklist analysis")
     )
 )]
 struct ApiDoc;
@@ -88,6 +100,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/scenario/document/calculate",
             post(calculate_scenario_document),
+        )
+        .route(
+            "/v1/estate/documents/analyze",
+            post(analyze_estate_documents),
         )
         .with_state(state)
 }
@@ -312,6 +328,24 @@ async fn calculate_scenario_document(
     Json(request): Json<ApiScenarioDocumentIngestRequest>,
 ) -> HttpResult<ApiScenarioDocumentCalculateResponse> {
     calculate_scenario_document_contract(request)
+        .map(Json)
+        .map_err(api_error_to_http)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/estate/documents/analyze",
+    tag = "estate-documents",
+    request_body = ApiEstateDocumentAnalysisRequest,
+    responses(
+        (status = 200, description = "Estate document checklist and detection analysis", body = ApiEstateDocumentAnalysisResponse),
+        (status = 400, description = "Document parsing or validation failure", body = ApiErrorResponse)
+    )
+)]
+async fn analyze_estate_documents(
+    Json(request): Json<ApiEstateDocumentAnalysisRequest>,
+) -> HttpResult<ApiEstateDocumentAnalysisResponse> {
+    analyze_estate_documents_contract(request)
         .map(Json)
         .map_err(api_error_to_http)
 }

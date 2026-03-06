@@ -109,7 +109,7 @@ const FRONTEND_NOT_BUILT_HTML: &str = r#"<!doctype html>
     main {
       width: min(780px, 92vw);
       background: #fff;
-      border-radius: 14px;
+      : 14px;
       padding: 24px;
       box-shadow: 0 20px 45px rgba(15, 23, 42, 0.14);
     }
@@ -121,7 +121,7 @@ const FRONTEND_NOT_BUILT_HTML: &str = r#"<!doctype html>
       margin: 14px 0 0;
       background: #111827;
       color: #e5e7eb;
-      border-radius: 10px;
+      : 10px;
       padding: 12px;
       overflow: auto;
     }
